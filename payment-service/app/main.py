@@ -1,0 +1,68 @@
+from contextlib import asynccontextmanager
+
+from aiokafka import AIOKafkaProducer
+from fastapi import Depends, FastAPI, Request
+
+from app.database import engine
+from app.models import Base
+from app.schemas import PaymentCreateSchema, PaymentReadSchema
+from app.service import PaymentService
+from app.dependencies import get_payment_service
+from app.rabbitmq import declare_payment_exchange, connect_rabbitmq
+from app.config import settings
+from app.kafka import create_kafka_producer
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.models import PaymentORM
+    async with engine.begin() as database_connection:
+        await database_connection.run_sync(Base.metadata.create_all)
+
+    rabbitmq_connection = await connect_rabbitmq(url=settings.rabbitmq_url)
+    channel = await rabbitmq_connection.channel()
+    app.state.payment_exchange = await declare_payment_exchange(channel, settings.payment_exchange_name)
+    
+    kafka_producer: AIOKafkaProducer = create_kafka_producer()
+    await kafka_producer.start()
+    app.state.kafka_producer = kafka_producer
+
+    try:
+        yield
+    finally:
+        kafka_producer.stop()
+        rabbitmq_connection.close()
+
+
+app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/payments/{payment_id}", response_model=PaymentReadSchema)
+async def get_payment(
+    payment_id,
+    payment_service: PaymentService = Depends(get_payment_service)
+):
+    return await payment_service.get(payment_id)
+
+@app.get("/payments", response_model=list[PaymentReadSchema])
+async def get_payments(
+    payment_service: PaymentService = Depends(get_payment_service)
+):
+    return await payment_service.get_all()
+
+
+@app.post("/payments", response_model=PaymentReadSchema)
+async def create_payment(
+    request: Request,
+    payload: PaymentCreateSchema,
+    payment_service: PaymentService = Depends(get_payment_service),
+):
+    payment = await payment_service.create(payload)
+
+    return await payment_service.complete_payment(
+        payment,
+        order_id=payload.order_id,
+        amount=payload.amount,
+        exchange=request.app.state.payment_exchange,
+        kafka_producer=request.app.state.kafka_producer,
+    )

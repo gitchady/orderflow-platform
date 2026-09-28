@@ -1,0 +1,6 @@
+fastapi
+email-validator
+httpx
+PyJWT[crypto]
+pydantic-settings
+uvicorn

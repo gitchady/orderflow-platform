@@ -1,0 +1,4 @@
+apt update
+apt install -y git curl ca-certificates
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
