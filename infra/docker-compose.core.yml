@@ -26,7 +26,7 @@ services:
       CATALOG_SERVICE_URL: http://catalog-service:8000
       ORDER_SERVICE_URL: http://order-service:8000
       AUTH_SERVICE_URL: http://auth-service:8000
-      JWT_SECRET: ${JWT_SECRET:-orderflow-local-jwt-secret-change-me}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ALGORITHM: HS256
     expose:
       - "8000"
@@ -42,8 +42,8 @@ services:
     build:
       context: ../auth-service
     environment:
-      DATABASE_URL: postgresql+psycopg2://auth:auth@auth-db:5432/auth
-      JWT_SECRET: ${JWT_SECRET:-orderflow-local-jwt-secret-change-me}
+      DATABASE_URL: postgresql+psycopg2://${AUTH_DB_USER}:${AUTH_DB_PASSWORD}@auth-db:5432/${AUTH_DB_NAME}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ALGORITHM: HS256
     expose:
       - "8000"
@@ -55,7 +55,7 @@ services:
     build:
       context: ../catalog-service
     environment:
-      DATABASE_URL: postgresql+psycopg2://catalog:catalog@catalog-db:5432/catalog
+      DATABASE_URL: postgresql+psycopg2://${CATALOG_DB_USER}:${CATALOG_DB_PASSWORD}@catalog-db:5432/${CATALOG_DB_NAME}
     expose:
       - "8000"
     depends_on:
@@ -66,10 +66,10 @@ services:
     build:
       context: ../order-service
     environment:
-      DATABASE_URL: postgresql+psycopg2://orders:orders@order-db:5432/orders
+      DATABASE_URL: postgresql+psycopg2://${ORDER_DB_USER}:${ORDER_DB_PASSWORD}@order-db:5432/${ORDER_DB_NAME}
       CATALOG_SERVICE_URL: http://catalog-service:8000
       PAYMENT_SERVICE_URL: http://payment-service:8000
-      RABBITMQ_URL: amqp://orderflow:orderflow@rabbitmq:5672/
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
       PAYMENT_EXCHANGE_NAME: payment.events
       PAYMENT_QUEUE_NAME: payment.results
       PAYMENT_SUCCEEDED_ROUTING_KEY: payment.succeeded
@@ -89,8 +89,8 @@ services:
     build:
       context: ../payment-service
     environment:
-      DATABASE_URL: postgresql+asyncpg://payments:payments@payment-db:5432/payments
-      RABBITMQ_URL: amqp://orderflow:orderflow@rabbitmq:5672/
+      DATABASE_URL: postgresql+asyncpg://${PAYMENT_DB_USER}:${PAYMENT_DB_PASSWORD}@payment-db:5432/${PAYMENT_DB_NAME}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@rabbitmq:5672/
       KAFKA_BOOTSTRAP_SERVER: kafka:29092
       KAFKA_ANALYTIC_PAYMENT_TOPIC: payment-events
       PAYMENT_EXCHANGE_NAME: payment.events
@@ -108,15 +108,15 @@ services:
   catalog-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: catalog
-      POSTGRES_USER: catalog
-      POSTGRES_PASSWORD: catalog
+      POSTGRES_DB: ${CATALOG_DB_NAME}
+      POSTGRES_USER: ${CATALOG_DB_USER}
+      POSTGRES_PASSWORD: ${CATALOG_DB_PASSWORD:?CATALOG_DB_PASSWORD is required}
     expose:
       - "5432"
     volumes:
       - catalog-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U catalog -d catalog"]
+      test: ["CMD-SHELL", "pg_isready -U ${CATALOG_DB_USER} -d ${CATALOG_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -124,15 +124,15 @@ services:
   order-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: orders
-      POSTGRES_USER: orders
-      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: ${ORDER_DB_NAME}
+      POSTGRES_USER: ${ORDER_DB_USER}
+      POSTGRES_PASSWORD: ${ORDER_DB_PASSWORD:?ORDER_DB_PASSWORD is required}
     expose:
       - "5432"
     volumes:
       - order-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U orders -d orders"]
+      test: ["CMD-SHELL", "pg_isready -U ${ORDER_DB_USER} -d ${ORDER_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -140,15 +140,15 @@ services:
   payment-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: payments
-      POSTGRES_USER: payments
-      POSTGRES_PASSWORD: payments
+      POSTGRES_DB: ${PAYMENT_DB_NAME}
+      POSTGRES_USER: ${PAYMENT_DB_USER}
+      POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:?PAYMENT_DB_PASSWORD is required}
     expose:
       - "5432"
     volumes:
       - payment-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U payments -d payments"]
+      test: ["CMD-SHELL", "pg_isready -U ${PAYMENT_DB_USER} -d ${PAYMENT_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -156,15 +156,15 @@ services:
   auth-db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: auth
-      POSTGRES_USER: auth
-      POSTGRES_PASSWORD: auth
+      POSTGRES_DB: ${AUTH_DB_NAME}
+      POSTGRES_USER: ${AUTH_DB_USER}
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:?AUTH_DB_PASSWORD is required}
     expose:
       - "5432"
     volumes:
       - auth-db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
+      test: ["CMD-SHELL", "pg_isready -U ${AUTH_DB_USER} -d ${AUTH_DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -172,8 +172,8 @@ services:
   rabbitmq:
     image: rabbitmq:3.13-management-alpine
     environment:
-      RABBITMQ_DEFAULT_USER: orderflow
-      RABBITMQ_DEFAULT_PASS: orderflow
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD is required}
     ports:
       - "${RABBITMQ_PORT:-5672}:5672"
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"

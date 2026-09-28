@@ -5,11 +5,11 @@ services:
     build:
       context: ../analytic-service
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS}
-      KAFKA_TOPIC: payment-events
-      MONGODB_URL: mongodb://analytics:${MONGODB_PASSWORD}@mongodb:27017/
-      MONGODB_DATABASE: analytics
-      MONGODB_COLLECTION: events
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:?KAFKA_BOOTSTRAP_SERVERS is required}
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-payment-events}
+      MONGODB_URL: mongodb://${MONGODB_USER}:${MONGODB_PASSWORD}@mongodb:27017/
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-analytics}
+      MONGODB_COLLECTION: ${MONGODB_COLLECTION:-events}
     ports:
       - "${ANALYTIC_SERVICE_PORT:-8005}:8000"
     depends_on:
@@ -25,14 +25,14 @@ services:
     logging:
       driver: "none"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: analytics
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD:?MONGODB_PASSWORD is required}
     expose:
       - "27017"
     volumes:
       - mongodb-data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--username", "analytics", "--password", "${MONGODB_PASSWORD}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping').ok"]
+      test: ["CMD", "mongosh", "--quiet", "--username", "${MONGODB_USER}", "--password", "${MONGODB_PASSWORD:?MONGODB_PASSWORD is required}", "--authenticationDatabase", "admin", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
       timeout: 5s
       retries: 10
