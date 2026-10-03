@@ -140,8 +140,15 @@ cloud-only settings derived from the examples, never local/production env files.
 There are still no repository backend test suites or CI workflows.
 
 Daily maintenance scheduling for **04:00 Europe/Moscow** is not yet activated.
-No fresh-task restoration has been verified; publication does not establish
-that processes or these environment-owned helper paths restore in a new task.
+Fresh-task restoration was verified on **2026-10-03** in a new isolated cloud
+task using the published environment: all three helpers and six venvs were
+present, and installation, startup and synthetic smoke passed after fetching
+the latest `main`. Live processes were inspected and the cloud stack restarted;
+do not assume running services survive into another task.
+The available automation interface exposes no repository/cloud-environment
+binding, so no cloud maintenance automation was created. A scheduler that binds
+this repository to the published environment and creates a fresh isolated cloud
+task per run is still required; a saved prompt alone does not verify scheduling.
 
 # Database Rules
 
