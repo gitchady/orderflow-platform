@@ -105,6 +105,44 @@ regression check and run applicable existing checks. If adequate validation need
 unavailable services or tooling, choose another safe task or make no change.
 Syntax/Compose checks alone are insufficient to validate a behavior change.
 
+# Cloud setup
+
+Published Codex Cloud environment: `orderflow-platform`; checkout:
+`/workspace/orderflow-platform`. It uses Python **3.14.7** and Node **22.23.3**.
+Each backend has a separate pip venv outside the checkout:
+
+```text
+/workspace/orderflow-cloud/venvs/auth-service
+/workspace/orderflow-cloud/venvs/catalog-service
+/workspace/orderflow-cloud/venvs/order-service
+/workspace/orderflow-cloud/venvs/payment-service
+/workspace/orderflow-cloud/venvs/api-gateway
+/workspace/orderflow-cloud/venvs/analytic-service
+```
+
+Verified environment-owned helpers (not tracked repository test suites),
+invocable from any working directory:
+
+```bash
+bash /workspace/orderflow-cloud/install.sh
+bash /workspace/orderflow-cloud/start.sh
+/workspace/orderflow-cloud/python/cpython-3.14-linux-x86_64-gnu/bin/python3.14 /workspace/orderflow-cloud/smoke.py
+```
+
+Installation uses existing requirements, checks all six venvs with `pip check`,
+parses Python sources, runs frontend `npm ci`, lint and build, validates both
+Compose files, and builds with a cloud-only network/CA override outside the
+checkout. Startup runs the isolated `orderflow-cloud` Compose project and the
+smoke helper. Smoke creates synthetic data and verifies registration/login,
+orders, payment status via RabbitMQ, and Kafka/MongoDB events. These commands
+were verified during onboarding, including a stop/start cycle; they use only
+cloud-only settings derived from the examples, never local/production env files.
+There are still no repository backend test suites or CI workflows.
+
+Daily maintenance scheduling for **04:00 Europe/Moscow** is not yet activated.
+No fresh-task restoration has been verified; publication does not establish
+that processes or these environment-owned helper paths restore in a new task.
+
 # Database Rules
 
 - One PostgreSQL database and independent declarative metadata per auth,
